@@ -1,4 +1,7 @@
-import { useState, useReducer, useMemo } from "react";
+
+import { useTasksStore } from "@/stores/tasks/tasks.store";
+
+
 import {
   Table,
   TableBody,
@@ -22,121 +25,23 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Funnel, EllipsisVertical, X } from "lucide-react";
-import AddNewTask from "../AddTask/AddTask";
-
-function tasksReducer(state, action) {
-  switch (action.type) {
-    case "ADD":
-      return [...state, action.payload];
-
-    case "TOGGLE":
-      return state.map((task) =>
-        task.id === action.payload.id
-          ? { ...task, completed: action.payload.completed }
-          : task
-      );
-
-    case "REMOVE":
-      return state.filter((task) => task.id !== action.payload.id);
-
-    default:
-      return state;
-  }
-}
+import AddNewTask from "./AddTask";
+import EditTask from "./EditTask";
 
 function TasksList() {
-  const Tasks = [
-    {
-      id: 1,
-      title: "Task 1",
-      completed: false,
-      created_at: "2025-12-12",
-      due_date: "2025-12-20",
-      piority: "high",
-    },
-    {
-      id: 2,
-      title: "Task 2",
-      completed: true,
-      created_at: "2025-12-12",
-      due_date: "2025-12-21",
-      piority: "medium",
-    },
-    {
-      id: 3,
-      title: "Task 3",
-      completed: false,
-      created_at: "2025-12-13",
-      due_date: "2025-12-25",
-      piority: "low",
-    },
-  ];
-  const [tasks, dispatch] = useReducer(tasksReducer, Tasks);
+  const tasks = useTasksStore(state => state.filteredTasks);
 
-  // const [tasks, setTasks] = useState(Tasks);
-  // const [searchQuery, setSearchQuery] = useState("");
-  // const [showHighPiority, setShowHighPiority] = useState(false);
-  // const [showMediumPiority, setShowMediumPiority] = useState(false);
-  // const [showLowPiority, setShowLowPiority] = useState(false);
-  // const activeFilters = [showHighPiority, showMediumPiority, showLowPiority].some(f => f);
 
-  const [filters, setFilters] = useState({
-    search: "",
-    priorities: new Set(),
-  });
+  const search = useTasksStore((state) => state.search);
+  const priorities = useTasksStore((state) => state.priorities);
 
-  const togglePriority = (priority) => {
-    setFilters((prev) => {
-      const next = new Set(prev.priorities);
+  const setSearch = useTasksStore((state) => state.setSearch);
+  const togglePriority = useTasksStore((state) => state.togglePriority);
 
-      next.has(priority) ? next.delete(priority) : next.add(priority);
-
-      return { ...prev, priorities: next };
-    });
-  };
-
-  const onSearchChange = (value) => {
-    setFilters((prev) => ({ ...prev, search: value }));
-  };
-
-  const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
-      const matchesSearch = task.title
-        .toLowerCase()
-        .includes(filters.search.toLowerCase());
-
-      if (!matchesSearch) return false;
-
-      if (filters.priorities.size === 0) return true;
-
-      return filters.priorities.has(task.piority);
-    });
-  }, [tasks, filters]);
-
-  const addTask = (task) => dispatch({ type: "ADD", payload: task });
-
-  const toggleTask = (id, completed) =>
-    dispatch({ type: "TOGGLE", payload: { id, completed } });
-
-  const removeTask = (id) => dispatch({ type: "REMOVE", payload: { id } });
-
-  // const AddTaskHandler = (newTask) => {
-  //   setTasks((prevTasks) => [...prevTasks, newTask]);
-  // };
-
-  // const TaskCheckChangeHandler = (taskId, checked) => {
-  //   let updatedTasks = tasks.map((task) => {
-  //     if (task.id === taskId) {
-  //       return { ...task, completed: checked };
-  //     }
-  //     return task;
-  //   });
-  //   setTasks(updatedTasks);
-  // };
-
-  // const RemoveTaskHandler = (taskId) => {
-  //   setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
-  // };
+  const toggleTask = useTasksStore((state) => state.toggleTask);
+  const removeTask = useTasksStore((state) => state.removeTask);
+  const addTask = useTasksStore((state) => state.addTask);
+  const editTask = useTasksStore((state) => state.updateTask);
 
   return (
     <>
@@ -144,11 +49,9 @@ function TasksList() {
         <div className="flex justify-between">
           <div className=" flex gap-3">
             <Input
-              className="min-w-60"
-              type="text"
-              placeholder="Search Tasks"
-              value={filters.search}
-              onChange={(e) => onSearchChange(e.target.value)}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search tasks"
             />
             <div className="flex items-center gap-2">
               <DropdownMenu>
@@ -164,21 +67,21 @@ function TasksList() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-full">
                   <DropdownMenuCheckboxItem
-                    checked={filters.priorities.has("high")}
+                    checked={priorities.has("high")}
                     onCheckedChange={() => togglePriority("high")}
                   >
                     High
                   </DropdownMenuCheckboxItem>
 
                   <DropdownMenuCheckboxItem
-                    checked={filters.priorities.has("medium")}
+                    checked={priorities.has("medium")}
                     onCheckedChange={() => togglePriority("medium")}
                   >
                     Medium
                   </DropdownMenuCheckboxItem>
 
                   <DropdownMenuCheckboxItem
-                    checked={filters.priorities.has("low")}
+                    checked={priorities.has("low")}
                     onCheckedChange={() => togglePriority("low")}
                   >
                     Low
@@ -186,7 +89,7 @@ function TasksList() {
                 </DropdownMenuContent>
               </DropdownMenu>
               <div className="flex gap-1">
-                {Array.from(filters.priorities).map((filter) => (
+                {Array.from(priorities).map((filter) => (
                   <Badge
                     className="hover:text-red-500 cursor-pointer"
                     onClick={() => togglePriority(filter)}
@@ -216,7 +119,7 @@ function TasksList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredTasks.map((task) => (
+            {tasks.map((task) => (
               <TableRow
                 className={`grid grid-cols-12 p-1 cursor-pointer ${
                   task.completed ? "bg-neutral-50" : ""
@@ -276,7 +179,7 @@ function TasksList() {
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
+                      <EditTask task={task} onUpdate={editTask} />
                       <DropdownMenuItem
                         className="text-red-500"
                         onClick={() => removeTask(task.id)}
