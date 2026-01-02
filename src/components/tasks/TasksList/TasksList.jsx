@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useReducer, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -20,8 +20,29 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Funnel, EllipsisVertical } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Funnel, EllipsisVertical, X } from "lucide-react";
 import AddNewTask from "../AddTask/AddTask";
+
+function tasksReducer(state, action) {
+  switch (action.type) {
+    case "ADD":
+      return [...state, action.payload];
+
+    case "TOGGLE":
+      return state.map((task) =>
+        task.id === action.payload.id
+          ? { ...task, completed: action.payload.completed }
+          : task
+      );
+
+    case "REMOVE":
+      return state.filter((task) => task.id !== action.payload.id);
+
+    default:
+      return state;
+  }
+}
 
 function TasksList() {
   const Tasks = [
@@ -31,7 +52,7 @@ function TasksList() {
       completed: false,
       created_at: "2025-12-12",
       due_date: "2025-12-20",
-      piority: "High",
+      piority: "high",
     },
     {
       id: 2,
@@ -39,7 +60,7 @@ function TasksList() {
       completed: true,
       created_at: "2025-12-12",
       due_date: "2025-12-21",
-      piority: "Medium",
+      piority: "medium",
     },
     {
       id: 3,
@@ -47,76 +68,138 @@ function TasksList() {
       completed: false,
       created_at: "2025-12-13",
       due_date: "2025-12-25",
-      piority: "High",
+      piority: "low",
     },
   ];
-  const [tasks, setTasks] = useState(Tasks);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showHighPiority, setShowHighPiority] = useState(false);
-  const [showMediumPiority, setShowMediumPiority] = useState(false);
-  const [showLowPiority, setShowLowPiority] = useState(false);
-  const activeFilters = [showHighPiority, showMediumPiority, showLowPiority].some(f => f);
+  const [tasks, dispatch] = useReducer(tasksReducer, Tasks);
 
-  const AddTaskHandler = (newTask) => {
-    setTasks((prevTasks) => [...prevTasks, newTask]);
-  };
+  // const [tasks, setTasks] = useState(Tasks);
+  // const [searchQuery, setSearchQuery] = useState("");
+  // const [showHighPiority, setShowHighPiority] = useState(false);
+  // const [showMediumPiority, setShowMediumPiority] = useState(false);
+  // const [showLowPiority, setShowLowPiority] = useState(false);
+  // const activeFilters = [showHighPiority, showMediumPiority, showLowPiority].some(f => f);
 
-  const TaskCheckChangeHandler = (taskId, checked) => {
-    let updatedTasks = tasks.map((task) => {
-      if (task.id === taskId) {
-        return { ...task, completed: checked };
-      }
-      return task;
+  const [filters, setFilters] = useState({
+    search: "",
+    priorities: new Set(),
+  });
+
+  const togglePriority = (priority) => {
+    setFilters((prev) => {
+      const next = new Set(prev.priorities);
+
+      next.has(priority) ? next.delete(priority) : next.add(priority);
+
+      return { ...prev, priorities: next };
     });
-    setTasks(updatedTasks);
   };
 
-  const RemoveTaskHandler = (taskId) => {
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+  const onSearchChange = (value) => {
+    setFilters((prev) => ({ ...prev, search: value }));
   };
+
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      const matchesSearch = task.title
+        .toLowerCase()
+        .includes(filters.search.toLowerCase());
+
+      if (!matchesSearch) return false;
+
+      if (filters.priorities.size === 0) return true;
+
+      return filters.priorities.has(task.piority);
+    });
+  }, [tasks, filters]);
+
+  const addTask = (task) => dispatch({ type: "ADD", payload: task });
+
+  const toggleTask = (id, completed) =>
+    dispatch({ type: "TOGGLE", payload: { id, completed } });
+
+  const removeTask = (id) => dispatch({ type: "REMOVE", payload: { id } });
+
+  // const AddTaskHandler = (newTask) => {
+  //   setTasks((prevTasks) => [...prevTasks, newTask]);
+  // };
+
+  // const TaskCheckChangeHandler = (taskId, checked) => {
+  //   let updatedTasks = tasks.map((task) => {
+  //     if (task.id === taskId) {
+  //       return { ...task, completed: checked };
+  //     }
+  //     return task;
+  //   });
+  //   setTasks(updatedTasks);
+  // };
+
+  // const RemoveTaskHandler = (taskId) => {
+  //   setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+  // };
+
   return (
     <>
-      <div className="filter-sec mb-3">
+      <div className="filter-sec mb-2">
         <div className="flex justify-between">
-          <div className="w-1/3 flex gap-3">
-            <Input 
-              className="" 
-              type="text" 
+          <div className=" flex gap-3">
+            <Input
+              className="min-w-60"
+              type="text"
               placeholder="Search Tasks"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={filters.search}
+              onChange={(e) => onSearchChange(e.target.value)}
             />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="text-neutral-700" variant="outline">
-                  <Funnel />
-                  Priority
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-full">
-                <DropdownMenuCheckboxItem
-                  checked={showHighPiority}
-                  onCheckedChange={setShowHighPiority}
-                >
-                  High
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={showMediumPiority}
-                  onCheckedChange={setShowMediumPiority}
-                >
-                  Medium
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={showLowPiority}
-                  onCheckedChange={setShowLowPiority}
-                >
-                  Low
-                </DropdownMenuCheckboxItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="text-neutral-700 text-sm"
+                    variant="outline"
+                  >
+                    <Funnel />
+                    Priority
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-full">
+                  <DropdownMenuCheckboxItem
+                    checked={filters.priorities.has("high")}
+                    onCheckedChange={() => togglePriority("high")}
+                  >
+                    High
+                  </DropdownMenuCheckboxItem>
+
+                  <DropdownMenuCheckboxItem
+                    checked={filters.priorities.has("medium")}
+                    onCheckedChange={() => togglePriority("medium")}
+                  >
+                    Medium
+                  </DropdownMenuCheckboxItem>
+
+                  <DropdownMenuCheckboxItem
+                    checked={filters.priorities.has("low")}
+                    onCheckedChange={() => togglePriority("low")}
+                  >
+                    Low
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <div className="flex gap-1">
+                {Array.from(filters.priorities).map((filter) => (
+                  <Badge
+                    className="hover:text-red-500 cursor-pointer"
+                    onClick={() => togglePriority(filter)}
+                    variant="secondary"
+                  >
+                    {filter} Priority <X />{" "}
+                  </Badge>
+                ))}
+              </div>
+            </div>
           </div>
           <div className="">
-            <AddNewTask onAddTask={AddTaskHandler} />
+            <AddNewTask onAddTask={addTask} />
           </div>
         </div>
       </div>
@@ -133,22 +216,9 @@ function TasksList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tasks
-              .filter((task) => {
-                const titleMatch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
-                
-                if (!titleMatch) return false;
-                if (!activeFilters) return true;
-                
-                if (showHighPiority && task.piority === "High") return true;
-                if (showMediumPiority && task.piority === "Medium") return true;
-                if (showLowPiority && task.piority === "Low") return true;
-                
-                return false;
-              })
-              .map((task) => (
+            {filteredTasks.map((task) => (
               <TableRow
-                className={`grid grid-cols-12 p-1 ${
+                className={`grid grid-cols-12 p-1 cursor-pointer ${
                   task.completed ? "bg-neutral-50" : ""
                 }`}
                 key={task.id}
@@ -157,9 +227,7 @@ function TasksList() {
                   <Checkbox
                     checked={task.completed}
                     id={`task-item${task.id}`}
-                    onCheckedChange={(checked) =>
-                      TaskCheckChangeHandler(task.id, checked)
-                    }
+                    onCheckedChange={(checked) => toggleTask(task.id, checked)}
                   />
                 </TableCell>
                 <TableCell className={`col-span-6  `}>
@@ -178,9 +246,19 @@ function TasksList() {
                 </TableCell>
 
                 <TableCell className="col-span-2 text-sm font-medium">
-                  {task.piority}
+                  <span
+                    className={` px-2 py-1 text-xs rounded-full font-medium  ${
+                      task.piority === "high"
+                        ? "bg-red-300/40"
+                        : task.piority === "low"
+                        ? "bg-green-300/40"
+                        : "bg-amber-300/40"
+                    }`}
+                  >
+                    {task.piority}
+                  </span>
                 </TableCell>
-                <TableCell className="col-span-2 text-sm">
+                <TableCell className="col-span-2 text-xs font-medium">
                   {new Date(task.due_date).toLocaleDateString("en-US", {
                     weekday: "short",
                     day: "2-digit",
@@ -199,9 +277,9 @@ function TasksList() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                       <DropdownMenuItem>Edit</DropdownMenuItem>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         className="text-red-500"
-                        onClick={() => RemoveTaskHandler(task.id)}
+                        onClick={() => removeTask(task.id)}
                       >
                         Delete
                       </DropdownMenuItem>
