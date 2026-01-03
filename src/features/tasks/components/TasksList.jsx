@@ -1,5 +1,5 @@
 
-import { useTasksStore } from "@/stores/tasks/tasks.store";
+import { useTasksStore } from "@/features/tasks/stores/tasks.store";
 
 
 import {
@@ -52,6 +52,7 @@ function TasksList() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search tasks"
+              className="min-w-sm"
             />
             <div className="flex items-center gap-2">
               <DropdownMenu>
@@ -162,12 +163,11 @@ function TasksList() {
                   </span>
                 </TableCell>
                 <TableCell className="col-span-2 text-xs font-medium">
-                  {new Date(task.due_date).toLocaleDateString("en-US", {
-                    weekday: "short",
-                    day: "2-digit",
-                    month: "short",
+                  {task.due_date ? new Date(task.due_date).toLocaleDateString("en-US", {
                     year: "numeric",
-                  })}
+                    month: "short",
+                    day: "numeric",
+                  }) : "No due date"}
                 </TableCell>
                 <TableCell className="col-span-1 text-sm text-right">
                   <DropdownMenu>

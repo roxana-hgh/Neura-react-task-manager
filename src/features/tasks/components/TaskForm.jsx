@@ -12,65 +12,89 @@ import {
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { ChevronDownIcon } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner"
+
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { taskSchema } from "../schema/task.schema";
+
 
 function TaskForm({ initialValues, onSubmit, submitLabel }) {
-  const [date, setDate] = useState();
+  const [date, setDate] = useState(null);
+  const [loader, setLoader] = useState(false);
   useEffect(() => {
     if (initialValues?.due_date) {
       setDate(new Date(initialValues.due_date));
     }
   }, [initialValues?.due_date]);
 
-  const submitHandler = (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(taskSchema),
+    defaultValues: {
+      title: initialValues?.title ?? "",
+      piority: initialValues?.piority ?? "medium",
+      description: initialValues?.description ?? "",
+      due_date: initialValues?.due_date ?? null,
+    },
+  });
 
+  const onValidSubmit = (data) => {
+    setLoader(true);
     onSubmit({
-      title: formData.get("title"),
-      piority: formData.get("piority"),
-      description: formData.get("description"),
+      ...data,
       due_date: date
         ? new Date(date.getTime() - date.getTimezoneOffset() * 60000)
             .toISOString()
             .split("T")[0]
         : null,
     });
+
   };
 
   return (
-    <form onSubmit={submitHandler}>
+    <form onSubmit={handleSubmit(onValidSubmit)}>
       <div className="grid grid-cols-2 gap-4 mb-3">
         <div className="col-span-2 grid gap-3">
           <Label>Title</Label>
-          <Input
-            name="title"
-            defaultValue={initialValues?.title}
-            placeholder="Task title"
-          />
+          <Input {...register("title")} />
+          {errors.title && (
+            <p className="text-sm text-red-500">{errors.title.message}</p>
+          )}
         </div>
 
         <div className="grid gap-3">
           <Label>Piority</Label>
-          <Select name="piority" defaultValue={initialValues?.piority}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select piority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectLabel>Piority</SelectLabel>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <Controller
+            name="piority"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
+
+          {errors.piority && (
+            <p className="text-sm text-red-500">{errors.piority.message}</p>
+          )}
         </div>
 
         <div className="flex flex-col gap-3">
@@ -90,15 +114,12 @@ function TaskForm({ initialValues, onSubmit, submitLabel }) {
 
         <div className="col-span-2 grid gap-3">
           <Label>Description</Label>
-          <Textarea
-            name="description"
-            defaultValue={initialValues?.description}
-          />
+          <Textarea {...register("description")} />
         </div>
       </div>
 
       <Button type="submit" className="w-full">
-        {submitLabel}
+        {loader ? <Spinner /> : submitLabel}
       </Button>
     </form>
   );

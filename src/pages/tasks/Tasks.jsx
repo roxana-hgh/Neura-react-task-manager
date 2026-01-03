@@ -1,5 +1,5 @@
-import AddNewTask from "@/components/tasks/AddTask";
-import TasksList from "@/components/tasks/TasksList";
+import AddNewTask from "@/features/tasks/components/AddTask";
+import TasksList from "@/features/tasks/components/TasksList";
 
 function Tasks() {
   return (
